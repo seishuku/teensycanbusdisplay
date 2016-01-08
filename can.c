@@ -14,12 +14,10 @@ static const int txb=8; // mailbox number for tx
 
 void CAN_Init(void)
 {
-	PORTA_PCR12=PORT_PCR_MUX(0x02);
-	PORTA_PCR13=PORT_PCR_MUX(0x02);
-
 	SIM_SCGC6|=SIM_SCGC6_FLEXCAN0_MASK;
 
-	CAN0_CTRL1&=~CAN_CTRL1_CLKSRC_MASK;
+	PORTA_PCR13=PORT_PCR_MUX(0x02);
+	PORTA_PCR12=PORT_PCR_MUX(0x02);
 
 	CAN0_MCR|=CAN_MCR_FRZ_MASK;
 	CAN0_MCR&=~CAN_MCR_MDIS_MASK;
@@ -48,25 +46,20 @@ void CAN_Init(void)
 	CAN0_CS(txb)=CAN_CS_CODE(0/*INACTIVE*/);
 }
 
-int CAN_ReadFrame(CAN_Frame_t *Frame, uint16_t Timeout)
+int CAN_ReadFrame(CAN_Frame_t *Frame)
 {
 	int i;
-	uint32_t Time=SysTick;
 
-	while(!(CAN0_IFLAG1&CAN_IFLAG1_BUF5I_MASK))
-	{
-//		if((SysTick-Time)>Timeout)
-//			return 0;
-	}
+	while(!(CAN0_IFLAG1&CAN_IFLAG1_BUF5I_MASK));
 
-	Frame->DLC=(CAN0_CS(rxb)&CAN_CS_DLC_MASK)>>CAN_CS_DLC_SHIFT;
+	Frame->Length=(CAN0_CS(rxb)&CAN_CS_DLC_MASK)>>CAN_CS_DLC_SHIFT;
 
 	if(CAN0_CS(rxb)&CAN_CS_IDE_MASK)
-		Frame->StdId=(CAN0_ID(rxb)&(CAN_ID_STD_MASK|CAN_ID_EXT_MASK))|CAN_MESSAGE_ID_EXT;
+		Frame->MessageID=(CAN0_ID(rxb)&(CAN_ID_STD_MASK|CAN_ID_EXT_MASK))|CAN_MESSAGE_ID_EXT;
 	else
-		Frame->StdId=(CAN0_ID(rxb)&CAN_ID_STD_MASK)>>CAN_ID_STD_SHIFT;
+		Frame->MessageID=(CAN0_ID(rxb)&CAN_ID_STD_MASK)>>CAN_ID_STD_SHIFT;
 
-	for(i=0;i<Frame->DLC;i++)
+	for(i=0;i<Frame->Length;i++)
 	{
 		if((i&0xFC)==0)
 			Frame->Data[i]=CAN0_WORD0(rxb)>>(24-((i&0x3)<<3));
@@ -74,7 +67,7 @@ int CAN_ReadFrame(CAN_Frame_t *Frame, uint16_t Timeout)
 			Frame->Data[i]=CAN0_WORD1(rxb)>>(24-((i&0x3)<<3));
 	}
 
-	for(i=Frame->DLC;i<8;i++)
+	for(i=Frame->Length;i<8;i++)
 		Frame->Data[i]=0x00;
 
 	CAN0_IFLAG1=CAN_IFLAG1_BUF5I_MASK;
@@ -90,22 +83,22 @@ void CAN_SendFrame(CAN_Frame_t Frame)
 
 	CAN0_CS(txb)=CAN_CS_CODE(0/*INACTIVE*/);
 
-	if((Frame.StdId&CAN_MESSAGE_ID_EXT)!=0x00)
+	if((Frame.MessageID&CAN_MESSAGE_ID_EXT)!=0x00)
 	{
 		CAN0_ID(txb)&=~(CAN_ID_STD_MASK|CAN_ID_EXT_MASK);
-		CAN0_ID(txb)|=(Frame.StdId&~CAN_MESSAGE_ID_EXT);
+		CAN0_ID(txb)|=(Frame.MessageID&~CAN_MESSAGE_ID_EXT);
 		CAN0_CS(txb)&=~CAN_CS_IDE_MASK;
 		CAN0_CS(txb)|=(1<<CAN_CS_IDE_SHIFT);
 	}
 	else
 	{
 		CAN0_ID(txb)&=~CAN_ID_STD_MASK;
-		CAN0_ID(txb)|=(Frame.StdId<<CAN_ID_STD_SHIFT);
+		CAN0_ID(txb)|=(Frame.MessageID<<CAN_ID_STD_SHIFT);
 		CAN0_CS(txb)&=~CAN_CS_IDE_MASK;
 		CAN0_CS(txb)|=(0<<CAN_CS_IDE_SHIFT);
 	}
 
-	for(i=0;i<Frame.DLC;i++)
+	for(i=0;i<Frame.Length;i++)
 	{
 		if((i&0xFC)==0)
 			CAN0_WORD0(txb)=(CAN0_WORD0(txb)&~(0xFF<<(24-((i&0x3)<<3))))|(Frame.Data[i]<<(24-((i&0x3)<<3)));
@@ -114,5 +107,5 @@ void CAN_SendFrame(CAN_Frame_t Frame)
 	}
 
 	CAN0_CS(txb)&=~CAN_CS_DLC_MASK;
-	CAN0_CS(txb)|=(Frame.DLC<<CAN_CS_DLC_SHIFT)|CAN_CS_CODE(0x0C/*ONCE*/);
+	CAN0_CS(txb)|=(Frame.Length<<CAN_CS_DLC_SHIFT)|CAN_CS_CODE(0x0C/*ONCE*/);
 }

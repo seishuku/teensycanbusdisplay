@@ -30,8 +30,9 @@ int CAN_VWKWP_Init(void)
 
 	// Open a channel
 	// Example: 0x200 7 0x01 0xC0 0x00 0x10 0x00 0x03 0x01
-	_TxMsg.StdId=0x200; // VW TP2.0, inital ID when opening channel
-	_TxMsg.DLC=7;
+	_TxMsg.MessageID=0x200; // VW TP2.0, inital ID when opening channel
+	_TxMsg.FrameType=CAN_DATA_FRAME;
+	_TxMsg.Length=7;
 	_TxMsg.Data[0]=0x01;	// TP2.0 module ID (ECU)
 	_TxMsg.Data[1]=0xC0;	// Operation (setup request)
 	_TxMsg.Data[2]=0x00;	// RX ID
@@ -42,7 +43,7 @@ int CAN_VWKWP_Init(void)
 
 	CAN_SendFrame(_TxMsg);
 
-	if(!CAN_ReadFrame(&_RxMsg, 100))
+	if(!CAN_ReadFrame(&_RxMsg))
 		return -1;
 
 	// VW TP2.0, inital module TX ID is 0x200 + Module ID
@@ -54,7 +55,7 @@ int CAN_VWKWP_Init(void)
 	// Byte5, TX ID prefix + valid nibble
 	// Byte6, Application type
 	// Example: 0x201 7 0x00 0xD0 0x00 0x03 0x40 0x07 0x01
-	if(_RxMsg.StdId==0x201&&_RxMsg.Data[1]==0xD0)
+	if(_RxMsg.MessageID==0x201&&_RxMsg.Data[1]==0xD0)
 	{
 		// Positive response, set rx/tx message IDs
 		_txID=_RxMsg.Data[4]+(_RxMsg.Data[5]<<8);
@@ -74,31 +75,33 @@ int CAN_VWKWP_Init(void)
 	// 			  10 = 10ms
 	//			  11 = 100ms
 	// Time:	  0..63
-	_TxMsg.StdId=_txID; // VW TP2.0, ID from opening channel
-	_TxMsg.DLC=6;
+	_TxMsg.MessageID=_txID; // VW TP2.0, ID from opening channel
+	_TxMsg.FrameType=CAN_DATA_FRAME;
+	_TxMsg.Length=6;
 	_TxMsg.Data[0]=0xA0;	// Operation (parameter request)
 	_TxMsg.Data[1]=0x0F;	// Block size, number of packets to send before expecting ACK
 	_TxMsg.Data[2]=0x8A;	// T1 (tx message timeout) 0-6300ms, set to 100ms
-	_TxMsg.Data[3]=0xFF; // T2 (always 0xFF)
-	_TxMsg.Data[4]=0x32; // T3 (minimum time for tx packets) 0-6300ms, set to 5ms
-	_TxMsg.Data[5]=0xFF; // T4 (always 0xFF)
+	_TxMsg.Data[3]=0xFF;	// T2 (always 0xFF)
+	_TxMsg.Data[4]=0x32;	// T3 (minimum time for tx packets) 0-6300ms, set to 5ms
+	_TxMsg.Data[5]=0xFF;	// T4 (always 0xFF)
 
 	CAN_SendFrame(_TxMsg);
 
-	if(!CAN_ReadFrame(&_RxMsg, 100))
+	if(!CAN_ReadFrame(&_RxMsg))
 		return -1;
 
 	// Response is the module's timing parameters, same format
 	// Example: 0x300 6 0xA1 0x0F 0x8A 0xFF 0x4A 0xFF
 	// 0x8A = 100ms timeout
 	// 0x4A = 10ms time between packets
-	if(_RxMsg.StdId==_rxID&&_RxMsg.Data[0]!=0xA1)
+	if(_RxMsg.MessageID==_rxID&&_RxMsg.Data[0]!=0xA1)
 		return -2;
 
 	// VWTP2.0 KWP2k startDiagnosticSession
 	// Example: 0x740 5 0x10 0x00 0x02 0x10 0x89
-	_TxMsg.StdId=_txID;				// VW TP2.0, ID from opening channel
-	_TxMsg.DLC=5;
+	_TxMsg.MessageID=_txID;			// VW TP2.0, ID from opening channel
+	_TxMsg.FrameType=CAN_DATA_FRAME;
+	_TxMsg.Length=5;
 	_TxMsg.Data[0]=0x10+(_seq++);	// VW TP 2.0 Operation (waiting for ACK, last packet)
 	_TxMsg.Data[1]=0x00;			// KWP2000 Session ID?
 	_TxMsg.Data[2]=0x02;			// KWP2000 2 bytes
@@ -107,24 +110,24 @@ int CAN_VWKWP_Init(void)
 
 	CAN_SendFrame(_TxMsg);
 
-	if(!CAN_ReadFrame(&_RxMsg, 100))
+	if(!CAN_ReadFrame(&_RxMsg))
 		return -1;
 
 	// Example: 300 1 0xB1
 	// Module ACK
 	// TO-DO: Sequence should be our last packet sequence + 1, track this?
-	if(_RxMsg.StdId==_rxID&&(_RxMsg.Data[0]&0xF0)==0xB0)
+	if(_RxMsg.MessageID==_rxID&&(_RxMsg.Data[0]&0xF0)==0xB0)
 	{
-		if(!CAN_ReadFrame(&_RxMsg, 100))
+		if(!CAN_ReadFrame(&_RxMsg))
 			return -1;
 
 		// Example: 0x300 5 0x10 0x00 0x02 0x50 0x89
 		// KWP2000 startDiagnosticSession positive response
-		if(_RxMsg.StdId==_rxID&&_RxMsg.Data[0]==0x10&&_RxMsg.Data[3]==0x50&&_RxMsg.Data[4]==0x89)
+		if(_RxMsg.MessageID==_rxID&&_RxMsg.Data[0]==0x10&&_RxMsg.Data[3]==0x50&&_RxMsg.Data[4]==0x89)
 		{
 			// Send ACK
-			_TxMsg.StdId=_txID; // VW TP2.0 outgoing message
-			_TxMsg.DLC=1;
+			_TxMsg.MessageID=_txID; // VW TP2.0 outgoing message
+			_TxMsg.Length=1;
 			_TxMsg.Data[0]=0xB0+(_RxMsg.Data[0]&0x0F)+1; // ACK
 
 			CAN_SendFrame(_TxMsg);
@@ -163,18 +166,22 @@ float _DecodeValue(uint8_t f, uint8_t a, uint8_t b)
 //		LocalID =  Local Identifier parameter (RLOCID)
 //		Index = Index into response data block, minus data size, response byte, and RLOCID.
 // Return values:
-//		 xxxx = Valid results
-// 		-1111 = CAN frame reading timeout
-//		-2222 = Unexpected data
-//		-3333 = Negative response
-//		-4444 = No acknowledgement
-float CAN_VWKWP_GetValue(uint8_t LocalID, uint8_t Index)
+//		 0 = Valid results
+// 		-1 = CAN frame reading timeout or invalid Value pointer
+//		-2 = Unexpected data
+//		-3 = Negative response
+//		-4 = No acknowledgement
+int CAN_VWKWP_GetValue(uint8_t LocalID, uint8_t Index, float *Value)
 {
 	uint8_t i=0;
 
+	if(Value==0)
+		return -1;
+
 	// Example: 0x740 5 0x10 0x00 0x02 0x21 0x72
-	_TxMsg.StdId=_txID;				// VW TP2.0 outgoing message
-	_TxMsg.DLC=5;
+	_TxMsg.MessageID=_txID;				// VW TP2.0 outgoing message
+	_TxMsg.FrameType=CAN_DATA_FRAME;
+	_TxMsg.Length=5;
 	_TxMsg.Data[0]=0x10+(_seq++);	// VW TP2.0 Operation (last packet, waiting for ack)
 	_TxMsg.Data[1]=0x00;			// KWP2000 Session ID?
 	_TxMsg.Data[2]=0x02;			// KWP2000 2 bytes
@@ -185,16 +192,16 @@ float CAN_VWKWP_GetValue(uint8_t LocalID, uint8_t Index)
 
 	CAN_SendFrame(_TxMsg);
 
-	if(!CAN_ReadFrame(&_RxMsg, 100))
-		return -1111.0f;
+	if(!CAN_ReadFrame(&_RxMsg))
+		return -1;
 
 	// Example: 300 1 0xB1
 	// Module ACK
 	// TO-DO: Sequence should be our last packet sequence + 1, do we need to track this?
-	if(_RxMsg.StdId==_rxID&&(_RxMsg.Data[0]&0xF0)==0xB0)
+	if(_RxMsg.MessageID==_rxID&&(_RxMsg.Data[0]&0xF0)==0xB0)
 	{
-		if(!CAN_ReadFrame(&_RxMsg, 100))
-			return -1111.0f;
+		if(!CAN_ReadFrame(&_RxMsg))
+			return -1;
 
 		// Example: 0x300 8 0x20 0x00 0x1A 0x61 0x72 0x08 0x0A 0xFF
 		//			0x300 8 0x21 0x08 0x0A 0xFF 0x71 0x0A 0x80 0x71
@@ -208,7 +215,7 @@ float CAN_VWKWP_GetValue(uint8_t LocalID, uint8_t Index)
 		// Byte4		KWP2000 Local ID parameter
 		// Byte5-Byte7	KWP2000 Data
 		// TO-DO: This probably should track packet sequence.
-		if(_RxMsg.StdId==_rxID&&(_RxMsg.Data[0]&0xF0)==0x20&&_RxMsg.Data[3]==0x61&&_RxMsg.Data[4]==_TxMsg.Data[4])
+		if(_RxMsg.MessageID==_rxID&&(_RxMsg.Data[0]&0xF0)==0x20&&_RxMsg.Data[3]==0x61&&_RxMsg.Data[4]==_TxMsg.Data[4])
 		{
 			_temp[i++]=_RxMsg.Data[3];
 			_temp[i++]=_RxMsg.Data[4];
@@ -218,14 +225,14 @@ float CAN_VWKWP_GetValue(uint8_t LocalID, uint8_t Index)
 
 			while(1)
 			{
-				if(!CAN_ReadFrame(&_RxMsg, 100))
-					return -1111.0f;
+				if(!CAN_ReadFrame(&_RxMsg))
+					return -1;
 
 				// Byte0		VW TP2.0 Operation + Number in sequence
 				// Byte1-Byte7	KWP2000 Data
 
 				// Data frame, not waiting for ACK, more packets to follow
-				if(_RxMsg.StdId==_rxID&&(_RxMsg.Data[0]&0xF0)==0x20)
+				if(_RxMsg.MessageID==_rxID&&(_RxMsg.Data[0]&0xF0)==0x20)
 				{
 					_temp[i++]=_RxMsg.Data[1];
 					_temp[i++]=_RxMsg.Data[2];
@@ -236,7 +243,7 @@ float CAN_VWKWP_GetValue(uint8_t LocalID, uint8_t Index)
 					_temp[i++]=_RxMsg.Data[7];
 				}
 				// Data frame, last packet, waiting for ACK
-				else if(_RxMsg.StdId==_rxID&&(_RxMsg.Data[0]&0xF0)==0x10)
+				else if(_RxMsg.MessageID==_rxID&&(_RxMsg.Data[0]&0xF0)==0x10)
 				{
 					_temp[i++]=_RxMsg.Data[1];
 					_temp[i++]=_RxMsg.Data[2];
@@ -248,40 +255,50 @@ float CAN_VWKWP_GetValue(uint8_t LocalID, uint8_t Index)
 
 					// Send acknowledgement, sequence # = last packet sequence + 1
 					// Example: 300 1 0xB4
-					_TxMsg.StdId=_txID; // VW TP2.0 outgoing message
-					_TxMsg.DLC=1;
+					_TxMsg.MessageID=_txID; // VW TP2.0 outgoing message
+					_TxMsg.Length=1;
 					_TxMsg.Data[0]=0xB0+(_RxMsg.Data[0]&0x0F)+1; // ACK
 
 					CAN_SendFrame(_TxMsg);
 
-					return _DecodeValue(_temp[3*Index+0+2], _temp[3*Index+1+2], _temp[3*Index+2+2]);
+					*Value=_DecodeValue(_temp[3*Index+0+2], _temp[3*Index+1+2], _temp[3*Index+2+2]);
+
+					return 0;
 				}
 				else
-					return -2222.0f;
+					return -2;
 			}
 		}
 		else
-			return -3333.0f;
+			return -3;
 	}
 	else
-		return -4444.0f;
+		return -4;
 }
 
+// Sends KWP2000 channel test for keep alive
+// Parameters:
+//		None.
+// Return values:
+//		 0 = Ok
+// 		-1 = CAN frame reading timeout
+//		-2 = Unexpected error
 int CAN_VWKWP_ChannelTest(void)
 {
 	// Example: 0x740 1 0xA3
-	_TxMsg.StdId=_txID;		// VW TP2.0, ID from opening channel
-	_TxMsg.DLC=1;
+	_TxMsg.MessageID=_txID;		// VW TP2.0, ID from opening channel
+	_TxMsg.FrameType=CAN_DATA_FRAME;
+	_TxMsg.Length=1;
 	_TxMsg.Data[0]=0xA3;	// Operation (channel test)
 
 	CAN_SendFrame(_TxMsg);
 
-	if(!CAN_ReadFrame(&_RxMsg, 100))
+	if(!CAN_ReadFrame(&_RxMsg))
 		return -1;
 
 	// Example: 0x300 6 0xA1 0x0F 0x8A 0xFF 0x4A 0xFF 0x00 0x00
-	if(_RxMsg.StdId==_rxID&&_RxMsg.Data[0]==0xA1)
-		return 1;
+	if(_RxMsg.MessageID==_rxID&&_RxMsg.Data[0]==0xA1)
+		return 0;
 
-	return 0;
+	return -2;
 }

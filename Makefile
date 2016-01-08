@@ -4,7 +4,7 @@ OBJS = $(PROJECT).o vwtpkwp2k.o can.o spi.o startup.o
 
 CFLAGS = -Wall -fno-common -mcpu=cortex-m4 -mthumb -O3 -I./include -I.
 ASFLAGS = -mcpu=cortex-m4
-LDFLAGS  = -mcpu=cortex-m4 -mthumb -nostartfiles -Tmk20dx256.ld
+LDFLAGS  = -mcpu=cortex-m4 -mthumb -nostartfiles -TMK20D7.ld
 
 CC = arm-eabi-gcc
 AS = arm-eabi-as

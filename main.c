@@ -27,10 +27,11 @@
 
 // Timing junk
 uint32_t Time=0, Time2=0;
-volatile uint32_t SysTick=0;
+extern volatile uint32_t SysTick;
 
 float prevBoost=9999.0f, prevEGT=9999.0f, prevCLT=9999.0f, prevSoot=9999.0f;
 float Boost=9999.0f, EGT=9999.0f, CLT=9999.0f, Soot=9999.0f;
+float Baro=0.0f;
 
 void delay(volatile unsigned i)
 {
@@ -84,15 +85,27 @@ void _display(int16_t value, uint8_t disp, uint8_t dp)
 // Display nothing on two display modules
 void _displayOff(void)
 {
-	uint8_t buf[8]={ 0xFF, 0xFF, 0xFF, 0xFF };
+	uint8_t buf[16]={ 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 
 	GPIOC_PCOR|=BIT0;
-	SPI_WriteBuf(buf, 4);
-	SPI_WriteBuf(buf, 4);
-	SPI_WriteBuf(buf, 4);
-	SPI_WriteBuf(buf, 4);
+	SPI_WriteBuf(buf, 16);
 	GPIOC_PSOR|=BIT0;
 }
+
+int Kick_Dog(void)
+{
+	if(WDOG_STCTRLH&WDOG_STCTRLH_WDOGEN_MASK)
+	{
+		WDOG_REFRESH=0xA602;
+		WDOG_REFRESH=0xB480;
+	}
+	else
+		return 1;
+
+	return 0;
+}
+
+int Status=0;
 
 int main(void)
 {
@@ -104,13 +117,13 @@ int main(void)
 	// Initalize the SPI module (used for 74HC595 displays)
 	SPI_Init();
 
-	// Initalize the CANbus module
-	CAN_Init();
-
 	// Inital set to clear any garbage
 	_displayOff();
 
-	CAN_VWKWP_Init();
+	// Initalize the CANbus module
+	CAN_Init();
+
+	Status+=CAN_VWKWP_Init();
 
 	// Inital time setting
 	Time=SysTick;
@@ -124,29 +137,38 @@ int main(void)
 			Time=SysTick;
 
 			prevSoot=Soot;
-			Soot=(CAN_VWKWP_GetValue(0x72, 6)+prevSoot)*0.5f;
+			Status+=CAN_VWKWP_GetValue(0x72, 5, &Soot);
+			Soot=(Soot+prevSoot)*0.5f;
 
 			prevCLT=CLT;
-			CLT=((CAN_VWKWP_GetValue(0x01, 3)*1.8f+32.0f)+prevCLT)*0.5f;
+			Status+=CAN_VWKWP_GetValue(0x01, 3, &CLT);
+			CLT=((CLT*1.8f+32.0f)+prevCLT)*0.5f;
 
 			prevEGT=EGT;
-			EGT=((CAN_VWKWP_GetValue(0x63, 1)*1.8f+32.0f)+prevEGT)*0.5f;
+			Status+=CAN_VWKWP_GetValue(0x63, 1, &EGT);
+			EGT=((EGT*1.8f+32.0f)+prevEGT)*0.5f;
 
 			prevBoost=Boost;
-			Boost=((CAN_VWKWP_GetValue(0x0B, 2)-CAN_VWKWP_GetValue(0x0A, 1))+prevBoost)*0.5f;
+			Status+=CAN_VWKWP_GetValue(0x0B, 2, &Boost);
+			Status+=CAN_VWKWP_GetValue(0x0A, 1, &Baro);
+			Boost=((Boost-Baro)+prevBoost)*0.5f;
 		}
 
 		// Channel keep alive
 		if((SysTick-Time2)>100)
 		{
 			Time2=SysTick;
-			CAN_VWKWP_ChannelTest();
+			Status+=CAN_VWKWP_ChannelTest();
 		}
 
 		_display((int16_t)EGT, 0, 0);
 		_display((int16_t)(Soot*10.0f), 1, 2);
 		_display((int16_t)CLT, 2, 0);
 		_display((int16_t)(Boost*0.145f), 3, 2);
+
+		// If everything went without an error...
+		if(Status==0)
+			Kick_Dog(); // Why you kick my dog?!
 	}
 
 	return 0;

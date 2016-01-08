@@ -1,392 +1,408 @@
 #include "mk20d7.h"
+#include <string.h>
+#include <stdlib.h>
 
-extern unsigned long _stext;
-extern unsigned long _etext;
-extern unsigned long _sdata;
-extern unsigned long _edata;
-extern unsigned long _sbss;
-extern unsigned long _ebss;
-extern unsigned long _estack;
-
-extern uint32_t SysTick;
-
-extern int main (void);
-void ResetHandler(void);
-
-void fault_isr(void)
+typedef struct
 {
-	while(1);
+	void *__ptr;
+	void *__fun[0x6E];
+} tVectorTable;
+
+extern char __SP_INIT[];
+
+void __thumb_startup(void);
+
+extern void __attribute__ ((interrupt)) Cpu_ivINT_FTM1(void);
+extern void __attribute__ ((interrupt)) Cpu_ivINT_PORTB(void);
+extern void __attribute__ ((interrupt)) Cpu_ivINT_PORTC(void);
+
+void __attribute__ ((interrupt)) Cpu_Interrupt(void)
+{
 }
 
-void unused_isr(void)
-{
-	while(1);
-}
+volatile uint32_t SysTick;
 
-void systick_default_isr(void)
+void __attribute__ ((interrupt)) Cpu_ivINT_SysTick(void)
 {
 	SysTick++;
 }
 
-void nmi_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void hard_fault_isr(void)		__attribute__ ((weak, alias("fault_isr")));
-void memmanage_fault_isr(void)	__attribute__ ((weak, alias("fault_isr")));
-void bus_fault_isr(void)		__attribute__ ((weak, alias("fault_isr")));
-void usage_fault_isr(void)		__attribute__ ((weak, alias("fault_isr")));
-void svcall_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void debugmonitor_isr(void)	__attribute__ ((weak, alias("unused_isr")));
-void pendablesrvreq_isr(void)	__attribute__ ((weak, alias("unused_isr")));
-void systick_isr(void)		__attribute__ ((weak, alias("systick_default_isr")));
-
-void dma_ch0_isr(void)		__attribute__ ((weak, alias("unused_isr")));
-void dma_ch1_isr(void)		__attribute__ ((weak, alias("unused_isr")));
-void dma_ch2_isr(void)		__attribute__ ((weak, alias("unused_isr")));
-void dma_ch3_isr(void)		__attribute__ ((weak, alias("unused_isr")));
-void dma_ch4_isr(void)		__attribute__ ((weak, alias("unused_isr")));
-void dma_ch5_isr(void)		__attribute__ ((weak, alias("unused_isr")));
-void dma_ch6_isr(void)		__attribute__ ((weak, alias("unused_isr")));
-void dma_ch7_isr(void)		__attribute__ ((weak, alias("unused_isr")));
-void dma_ch8_isr(void)		__attribute__ ((weak, alias("unused_isr")));
-void dma_ch9_isr(void)		__attribute__ ((weak, alias("unused_isr")));
-void dma_ch10_isr(void)		__attribute__ ((weak, alias("unused_isr")));
-void dma_ch11_isr(void)		__attribute__ ((weak, alias("unused_isr")));
-void dma_ch12_isr(void)		__attribute__ ((weak, alias("unused_isr")));
-void dma_ch13_isr(void)		__attribute__ ((weak, alias("unused_isr")));
-void dma_ch14_isr(void)		__attribute__ ((weak, alias("unused_isr")));
-void dma_ch15_isr(void)		__attribute__ ((weak, alias("unused_isr")));
-void dma_error_isr(void)		__attribute__ ((weak, alias("unused_isr")));
-void mcm_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void flash_cmd_isr(void)		__attribute__ ((weak, alias("unused_isr")));
-void flash_error_isr(void)		__attribute__ ((weak, alias("unused_isr")));
-void low_voltage_isr(void)		__attribute__ ((weak, alias("unused_isr")));
-void wakeup_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void watchdog_isr(void)		__attribute__ ((weak, alias("unused_isr")));
-void i2c0_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void i2c1_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void i2c2_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void spi0_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void spi1_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void spi2_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void sdhc_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void can0_message_isr(void)	__attribute__ ((weak, alias("unused_isr")));
-void can0_bus_off_isr(void)	__attribute__ ((weak, alias("unused_isr")));
-void can0_error_isr(void)		__attribute__ ((weak, alias("unused_isr")));
-void can0_tx_warn_isr(void)	__attribute__ ((weak, alias("unused_isr")));
-void can0_rx_warn_isr(void)	__attribute__ ((weak, alias("unused_isr")));
-void can0_wakeup_isr(void)		__attribute__ ((weak, alias("unused_isr")));
-void i2s0_tx_isr(void)		__attribute__ ((weak, alias("unused_isr")));
-void i2s0_rx_isr(void)		__attribute__ ((weak, alias("unused_isr")));
-void i2s0_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void uart0_lon_isr(void)		__attribute__ ((weak, alias("unused_isr")));
-void uart0_status_isr(void)	__attribute__ ((weak, alias("unused_isr")));
-void uart0_error_isr(void)		__attribute__ ((weak, alias("unused_isr")));
-void uart1_status_isr(void)	__attribute__ ((weak, alias("unused_isr")));
-void uart1_error_isr(void)		__attribute__ ((weak, alias("unused_isr")));
-void uart2_status_isr(void)	__attribute__ ((weak, alias("unused_isr")));
-void uart2_error_isr(void)		__attribute__ ((weak, alias("unused_isr")));
-void uart3_status_isr(void)	__attribute__ ((weak, alias("unused_isr")));
-void uart3_error_isr(void)		__attribute__ ((weak, alias("unused_isr")));
-void uart4_status_isr(void)	__attribute__ ((weak, alias("unused_isr")));
-void uart4_error_isr(void)		__attribute__ ((weak, alias("unused_isr")));
-void uart5_status_isr(void)	__attribute__ ((weak, alias("unused_isr")));
-void uart5_error_isr(void)		__attribute__ ((weak, alias("unused_isr")));
-void adc0_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void adc1_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void cmp0_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void cmp1_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void cmp2_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void ftm0_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void ftm1_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void ftm2_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void ftm3_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void cmt_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void rtc_alarm_isr(void)		__attribute__ ((weak, alias("unused_isr")));
-void rtc_seconds_isr(void)		__attribute__ ((weak, alias("unused_isr")));
-void pit_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void pit0_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void pit1_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void pit2_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void pit3_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void pdb_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void usb_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void usb_charge_isr(void)		__attribute__ ((weak, alias("unused_isr")));
-void dac0_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void dac1_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void tsi0_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void mcg_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void lptmr_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void porta_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void portb_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void portc_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void portd_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void porte_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void portcd_isr(void)			__attribute__ ((weak, alias("unused_isr")));
-void software_isr(void)		__attribute__ ((weak, alias("unused_isr")));
-
-__attribute__ ((section(".dmabuffers"), used, aligned(512))) void (* _VectorsRam[111])(void);
-
-__attribute__ ((section(".vectors"), used)) void (* const _VectorsFlash[111])(void)=
+// Interrupt vector table
+__attribute__ ((section (".vectortable"))) const tVectorTable __vect_table=
 {
-	(void (*)(void))((unsigned long)&_estack),	//  0 ARM: Initial Stack Pointer
-	ResetHandler,						//  1 ARM: Initial Program Counter
-	nmi_isr,							//  2 ARM: Non-maskable Interrupt (NMI)
-	hard_fault_isr,						//  3 ARM: Hard Fault
-	memmanage_fault_isr,					//  4 ARM: MemManage Fault
-	bus_fault_isr,						//  5 ARM: Bus Fault
-	usage_fault_isr,					//  6 ARM: Usage Fault
-	fault_isr,							//  7 --
-	fault_isr,							//  8 --
-	fault_isr,							//  9 --
-	fault_isr,							// 10 --
-	svcall_isr,						// 11 ARM: Supervisor call (SVCall)
-	debugmonitor_isr,					// 12 ARM: Debug Monitor
-	fault_isr,							// 13 --
-	pendablesrvreq_isr,					// 14 ARM: Pendable req serv(PendableSrvReq)
-	systick_isr,						// 15 ARM: System tick timer (SysTick)
-	dma_ch0_isr,						// 16 DMA channel 0 transfer complete
-	dma_ch1_isr,						// 17 DMA channel 1 transfer complete
-	dma_ch2_isr,						// 18 DMA channel 2 transfer complete
-	dma_ch3_isr,						// 19 DMA channel 3 transfer complete
-	dma_ch4_isr,						// 20 DMA channel 4 transfer complete
-	dma_ch5_isr,						// 21 DMA channel 5 transfer complete
-	dma_ch6_isr,						// 22 DMA channel 6 transfer complete
-	dma_ch7_isr,						// 23 DMA channel 7 transfer complete
-	dma_ch8_isr,						// 24 DMA channel 8 transfer complete
-	dma_ch9_isr,						// 25 DMA channel 9 transfer complete
-	dma_ch10_isr,						// 26 DMA channel 10 transfer complete
-	dma_ch11_isr,						// 27 DMA channel 10 transfer complete
-	dma_ch12_isr,						// 28 DMA channel 10 transfer complete
-	dma_ch13_isr,						// 29 DMA channel 10 transfer complete
-	dma_ch14_isr,						// 30 DMA channel 10 transfer complete
-	dma_ch15_isr,						// 31 DMA channel 10 transfer complete
-	dma_error_isr,						// 32 DMA error interrupt channel
-	unused_isr,						// 33 --
-	flash_cmd_isr,						// 34 Flash Memory Command complete
-	flash_error_isr,					// 35 Flash Read collision
-	low_voltage_isr,					// 36 Low-voltage detect/warning
-	wakeup_isr,						// 37 Low Leakage Wakeup
-	watchdog_isr,						// 38 Both EWM and WDOG interrupt
-	unused_isr,						// 39 --
-	i2c0_isr,							// 40 I2C0
-	i2c1_isr,							// 41 I2C1
-	spi0_isr,							// 42 SPI0
-	spi1_isr,							// 43 SPI1
-	unused_isr,						// 44 --
-	can0_message_isr,					// 45 CAN OR'ed Message buffer (0-15)
-	can0_bus_off_isr,					// 46 CAN Bus Off
-	can0_error_isr,						// 47 CAN Error
-	can0_tx_warn_isr,					// 48 CAN Transmit Warning
-	can0_rx_warn_isr,					// 49 CAN Receive Warning
-	can0_wakeup_isr,					// 50 CAN Wake Up
-	i2s0_tx_isr,						// 51 I2S0 Transmit
-	i2s0_rx_isr,						// 52 I2S0 Receive
-	unused_isr,						// 53 --
-	unused_isr,						// 54 --
-	unused_isr,						// 55 --
-	unused_isr,						// 56 --
-	unused_isr,						// 57 --
-	unused_isr,						// 58 --
-	unused_isr,						// 59 --
-	uart0_lon_isr,						// 60 UART0 CEA709.1-B (LON) status
-	uart0_status_isr,					// 61 UART0 status
-	uart0_error_isr,					// 62 UART0 error
-	uart1_status_isr,					// 63 UART1 status
-	uart1_error_isr,					// 64 UART1 error
-	uart2_status_isr,					// 65 UART2 status
-	uart2_error_isr,					// 66 UART2 error
-	unused_isr,						// 67 --
-	unused_isr,						// 68 --
-	unused_isr,						// 69 --
-	unused_isr,						// 70 --
-	unused_isr,						// 71 --
-	unused_isr,						// 72 --
-	adc0_isr,							// 73 ADC0
-	adc1_isr,							// 74 ADC1
-	cmp0_isr,							// 75 CMP0
-	cmp1_isr,							// 76 CMP1
-	cmp2_isr,							// 77 CMP2
-	ftm0_isr,							// 78 FTM0
-	ftm1_isr,							// 79 FTM1
-	ftm2_isr,							// 80 FTM2
-	cmt_isr,							// 81 CMT
-	rtc_alarm_isr,						// 82 RTC Alarm interrupt
-	rtc_seconds_isr,					// 83 RTC Seconds interrupt
-	pit0_isr,							// 84 PIT Channel 0
-	pit1_isr,							// 85 PIT Channel 1
-	pit2_isr,							// 86 PIT Channel 2
-	pit3_isr,							// 87 PIT Channel 3
-	pdb_isr,							// 88 PDB Programmable Delay Block
-	usb_isr,							// 89 USB OTG
-	usb_charge_isr,						// 90 USB Charger Detect
-	unused_isr,						// 91 --
-	unused_isr,						// 92 --
-	unused_isr,						// 93 --
-	unused_isr,						// 94 --
-	unused_isr,						// 95 --
-	unused_isr,						// 96 --
-	dac0_isr,							// 97 DAC0
-	unused_isr,						// 98 --
-	tsi0_isr,							// 99 TSI0
-	mcg_isr,							// 100 MCG
-	lptmr_isr,							// 101 Low Power Timer
-	unused_isr,						// 102 --
-	porta_isr,							// 103 Pin detect (Port A)
-	portb_isr,							// 104 Pin detect (Port B)
-	portc_isr,							// 105 Pin detect (Port C)
-	portd_isr,							// 106 Pin detect (Port D)
-	porte_isr,							// 107 Pin detect (Port E)
-	unused_isr,						// 108 --
-	unused_isr,						// 109 --
-	software_isr,						// 110 Software interrupt
+	&__SP_INIT,					//	0x00	ivINT_Initial_Stack_Pointer
+	{
+		&__thumb_startup,		//	0x01	ivINT_Initial_Program_Counter
+		&Cpu_Interrupt,			//	0x02	ivINT_NMI
+		&Cpu_Interrupt,			//	0x03	ivINT_Hard_Fault
+		&Cpu_Interrupt,			//	0x04	ivINT_Mem_Manage_Fault
+		&Cpu_Interrupt,			//	0x05	ivINT_Bus_Fault
+		&Cpu_Interrupt,			//	0x06	ivINT_Usage_Fault
+		&Cpu_Interrupt,			//	0x07	ivINT_Reserved7
+		&Cpu_Interrupt,			//	0x08	ivINT_Reserved8
+		&Cpu_Interrupt,			//	0x09	ivINT_Reserved9
+		&Cpu_Interrupt,			//	0x0A	ivINT_Reserved10
+		&Cpu_Interrupt,			//	0x0B	ivINT_SVCall
+		&Cpu_Interrupt,			//	0x0C	ivINT_DebugMonitor
+		&Cpu_Interrupt,			//	0x0D	ivINT_Reserved13
+		&Cpu_Interrupt,			//	0x0E	ivINT_PendableSrvReq
+		&Cpu_ivINT_SysTick,		//	0x0F	ivINT_SysTick
+		&Cpu_Interrupt,			//	0x10	ivINT_DMA0
+		&Cpu_Interrupt,			//	0x11	ivINT_DMA1
+		&Cpu_Interrupt,			//	0x12	ivINT_DMA2
+		&Cpu_Interrupt,			//	0x13	ivINT_DMA3
+		&Cpu_Interrupt,			//	0x14	ivINT_DMA4
+		&Cpu_Interrupt,			//	0x15	ivINT_DMA5
+		&Cpu_Interrupt,			//	0x16	ivINT_DMA6
+		&Cpu_Interrupt,			//	0x17	ivINT_DMA7
+		&Cpu_Interrupt,			//	0x18	ivINT_DMA8
+		&Cpu_Interrupt,			//	0x19	ivINT_DMA9
+		&Cpu_Interrupt,			//	0x1A	ivINT_DMA10
+		&Cpu_Interrupt,			//	0x1B	ivINT_DMA11
+		&Cpu_Interrupt,			//	0x1C	ivINT_DMA12
+		&Cpu_Interrupt,			//	0x1D	ivINT_DMA13
+		&Cpu_Interrupt,			//	0x1E	ivINT_DMA14
+		&Cpu_Interrupt,			//	0x1F	ivINT_DMA15
+		&Cpu_Interrupt,			//	0x20	ivINT_DMA_Error
+		&Cpu_Interrupt,			//	0x21	ivINT_MCM
+		&Cpu_Interrupt,			//	0x22	ivINT_FTFL
+		&Cpu_Interrupt,			//	0x23	ivINT_Read_Collision
+		&Cpu_Interrupt,			//	0x24	ivINT_LVD_LVW
+		&Cpu_Interrupt,			//	0x25	ivINT_LLW
+		&Cpu_Interrupt,			//	0x26	ivINT_Watchdog
+		&Cpu_Interrupt,			//	0x27	ivINT_Reserved39
+		&Cpu_Interrupt,			//	0x28	ivINT_I2C0
+		&Cpu_Interrupt,			//	0x29	ivINT_I2C1
+		&Cpu_Interrupt,			//	0x2A	ivINT_SPI0
+		&Cpu_Interrupt,			//	0x2B	ivINT_SPI1
+		&Cpu_Interrupt,			//	0x2C	ivINT_Reserved44
+		&Cpu_Interrupt,			//	0x2D	ivINT_CAN0_ORed_Message_buffer
+		&Cpu_Interrupt,			//	0x2E	ivINT_CAN0_Bus_Off
+		&Cpu_Interrupt,			//	0x2F	ivINT_CAN0_Error
+		&Cpu_Interrupt,			//	0x30	ivINT_CAN0_Tx_Warning
+		&Cpu_Interrupt,			//	0x31	ivINT_CAN0_Rx_Warning
+		&Cpu_Interrupt,			//	0x32	ivINT_CAN0_Wake_Up
+		&Cpu_Interrupt,			//	0x33	ivINT_I2S0_Tx
+		&Cpu_Interrupt,			//	0x34	ivINT_I2S0_Rx
+		&Cpu_Interrupt,			//	0x35	ivINT_Reserved53
+		&Cpu_Interrupt,			//	0x36	ivINT_Reserved54
+		&Cpu_Interrupt,			//	0x37	ivINT_Reserved55
+		&Cpu_Interrupt,			//	0x38	ivINT_Reserved56
+		&Cpu_Interrupt,			//	0x39	ivINT_Reserved57
+		&Cpu_Interrupt,			//	0x3A	ivINT_Reserved58
+		&Cpu_Interrupt,			//	0x3B	ivINT_Reserved59
+		&Cpu_Interrupt,			//	0x3C	ivINT_UART0_LON
+		&Cpu_Interrupt,			//	0x3D	ivINT_UART0_RX_TX
+		&Cpu_Interrupt,			//	0x3E	ivINT_UART0_ERR
+		&Cpu_Interrupt,			//	0x3F	ivINT_UART1_RX_TX
+		&Cpu_Interrupt,			//	0x40	ivINT_UART1_ERR
+		&Cpu_Interrupt,			//	0x41	ivINT_UART2_RX_TX
+		&Cpu_Interrupt,			//	0x42	ivINT_UART2_ERR
+		&Cpu_Interrupt,			//	0x43	ivINT_UART3_RX_TX
+		&Cpu_Interrupt,			//	0x44	ivINT_UART3_ERR
+		&Cpu_Interrupt,			//	0x45	ivINT_UART4_RX_TX
+		&Cpu_Interrupt,			//	0x46	ivINT_UART4_ERR
+		&Cpu_Interrupt,			//	0x47	ivINT_Reserved71
+		&Cpu_Interrupt,			//	0x48	ivINT_Reserved72
+		&Cpu_Interrupt,			//	0x49	ivINT_ADC0
+		&Cpu_Interrupt,			//	0x4A	ivINT_ADC1
+		&Cpu_Interrupt,			//	0x4B	ivINT_CMP0
+		&Cpu_Interrupt,			//	0x4C	ivINT_CMP1
+		&Cpu_Interrupt,			//	0x4D	ivINT_CMP2
+		&Cpu_Interrupt,			//	0x4E	ivINT_FTM0
+		&Cpu_Interrupt,			//	0x4F	ivINT_FTM1
+		&Cpu_Interrupt,			//	0x50	ivINT_FTM2
+		&Cpu_Interrupt,			//	0x51	ivINT_CMT
+		&Cpu_Interrupt,			//	0x52	ivINT_RTC
+		&Cpu_Interrupt,			//	0x53	ivINT_RTC_Seconds
+		&Cpu_Interrupt,			//	0x54	ivINT_PIT0
+		&Cpu_Interrupt,			//	0x55	ivINT_PIT1
+		&Cpu_Interrupt,			//	0x56	ivINT_PIT2
+		&Cpu_Interrupt,			//	0x57	ivINT_PIT3
+		&Cpu_Interrupt,			//	0x58	ivINT_PDB0
+		&Cpu_Interrupt,				//	0x59	ivINT_USB0
+		&Cpu_Interrupt,			//	0x5A	ivINT_USBDCD
+		&Cpu_Interrupt,			//	0x5B	ivINT_Reserved91
+		&Cpu_Interrupt,			//	0x5C	ivINT_Reserved92
+		&Cpu_Interrupt,			//	0x5D	ivINT_Reserved93
+		&Cpu_Interrupt,			//	0x5E	ivINT_Reserved94
+		&Cpu_Interrupt,			//	0x5F	ivINT_Reserved95
+		&Cpu_Interrupt,			//	0x60	ivINT_Reserved96
+		&Cpu_Interrupt,			//	0x61	ivINT_DAC0
+		&Cpu_Interrupt,			//	0x62	ivINT_Reserved98
+		&Cpu_Interrupt,			//	0x63	ivINT_TSI0
+		&Cpu_Interrupt,			//	0x64	ivINT_MCG
+		&Cpu_Interrupt,			//	0x65	ivINT_LPTimer
+		&Cpu_Interrupt,			//	0x66	ivINT_Reserved102
+		&Cpu_Interrupt,			//	0x67	ivINT_PORTA
+		&Cpu_Interrupt,			//	0x68	ivINT_PORTB
+		&Cpu_Interrupt,			//	0x69	ivINT_PORTC
+		&Cpu_Interrupt,			//	0x6A	ivINT_PORTD
+		&Cpu_Interrupt,			//	0x6B	ivINT_PORTE
+		&Cpu_Interrupt,			//	0x6C	ivINT_Reserved108
+		&Cpu_Interrupt,			//	0x6D	ivINT_Reserved109
+		&Cpu_Interrupt			//	0x6E	ivINT_SWI
+	}
 };
 
+// Flash configuration field
+__attribute__ ((section (".cfmconfig"))) const uint8_t _cfm[0x10]={ 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7E, 0xFB, 0xFF, 0xFF };
 
-__attribute__ ((section(".flashconfig"), used)) const uint8_t flashconfigbytes[16]={ 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE, 0xFF, 0xFF, 0xFF };
+extern int main(void);
 
-__attribute__ ((section(".startup"))) void ResetHandler(void)
+// format of the ROM table info entry
+typedef struct RomInfo
 {
-	uint32_t *src=&_etext;
-	uint32_t *dest=&_sdata;
-	unsigned int i;
+	unsigned long Source;
+	unsigned long Target;
+	unsigned long Size;
+} RomInfo;
 
-	WDOG_UNLOCK=0xC520;
-	WDOG_UNLOCK=0xD928;
-	__asm__ volatile ("nop");
-	__asm__ volatile ("nop");
-	WDOG_STCTRLH=WDOG_STCTRLH_ALLOWUPDATE_MASK;
+// linker defined symbol
+extern RomInfo __S_romp[] __attribute__((weak));
 
-	SIM_SCGC3=SIM_SCGC3_ADC1_MASK|SIM_SCGC3_FTM2_MASK;
-	SIM_SCGC5=0x00043F82;
-	SIM_SCGC6=SIM_SCGC6_RTC_MASK|SIM_SCGC6_FTM0_MASK|SIM_SCGC6_FTM1_MASK|SIM_SCGC6_ADC0_MASK|SIM_SCGC6_FTFL_MASK;
+// Current value of the FAULTMASK register and lock
+volatile uint8_t SR_reg;
+volatile uint8_t SR_lock=0x00;
 
-	if (!(RTC_CR & RTC_CR_OSCE_MASK)) {
-		RTC_SR = 0;
-		RTC_CR = RTC_CR_SC16P_MASK | RTC_CR_SC4P_MASK | RTC_CR_OSCE_MASK;
+// Routine to copy a single section from ROM to RAM
+void __copy_rom_section(unsigned long dst, unsigned long src, unsigned long size)
+{
+	const int size_int=sizeof(int);
+	const int mask_int=sizeof(int)-1;
+	const int size_short=sizeof(short);
+	const int mask_short=sizeof(short)-1;
+	const int size_char=sizeof(char);
+	unsigned long len=size;
+
+	if(dst==src||size==0)
+		return;
+
+	while(len>0)
+	{
+		if(!(src&mask_int)&&!(dst&mask_int)&&len>=size_int)
+		{
+			*((int *)dst)=*((int*)src);
+			dst+=size_int;
+			src+=size_int;
+			len-=size_int;
+		}
+		else if(!(src&mask_short)&&!(dst&mask_short)&&len>=size_short)
+		{
+			*((short *)dst)=*((short*)src);
+			dst+=size_short;
+			src+=size_short;
+			len-=size_short;
+		}
+		else
+		{
+			*((char *)dst)=*((char *)src);
+			dst+=size_char;
+			src+=size_char;
+			len-=size_char;
+		}
 	}
+}
 
-	if(PMC_REGSC&PMC_REGSC_ACKISO_MASK)
+// Routine that copies all sections the user marked as ROM into their target RAM addresses.
+// __S_romp is defined in the linker command file, it is a table of RomInfo structures.
+// The final entry in the table has all-zero fields.
+void __copy_rom_sections_to_ram(void)
+{
+	int index;
+
+	if(__S_romp==0)
+		return;
+
+	// Go through the entire table, copying sections from ROM to RAM.
+	for(index=0;__S_romp[index].Source!=0||__S_romp[index].Target!=0||__S_romp[index].Size!=0;++index)
+		__copy_rom_section(__S_romp[index].Target, __S_romp[index].Source, __S_romp[index].Size);
+}
+
+void __zero_fill_bss(void)
+{
+	extern char __START_BSS[];
+	extern char __END_BSS[];
+	unsigned long len=__END_BSS-__START_BSS;
+	unsigned long dst=(unsigned long)__START_BSS;
+	const int size_int=sizeof(int);
+	const int mask_int=sizeof(int)-1;
+	const int size_short=sizeof(short);
+	const int mask_short=sizeof(short)-1;
+	const int size_char=sizeof(char);
+
+	if(len==0)
+		return;
+
+	while(len>0)
+	{
+		if(!(dst&mask_int)&&len>=size_int)
+		{
+			*((int *)dst)=0;
+			dst+=size_int;
+			len-=size_int;
+		}
+		else if(!(dst&mask_short)&&len>=size_short)
+		{
+			*((short *)dst)=0;
+			dst+=size_short;
+			len-=size_short;
+		}
+		else
+		{
+			*((char *)dst)=0;
+			dst+=size_char;
+			len-=size_char;
+		}
+	}
+}
+
+void __init_hardware(void)
+{
+	// Set the interrupt vector table position
+	SCB_VTOR=(uint32_t)(&__vect_table);
+
+#if 0
+	// Disable the WDOG module
+	WDOG_UNLOCK = WDOG_UNLOCK_WDOGUNLOCK(0xC520);
+	WDOG_UNLOCK = WDOG_UNLOCK_WDOGUNLOCK(0xD928);
+	WDOG_STCTRLH=WDOG_STCTRLH_BYTESEL(0x00)|WDOG_STCTRLH_WAITEN_MASK|WDOG_STCTRLH_STOPEN_MASK|WDOG_STCTRLH_ALLOWUPDATE_MASK|WDOG_STCTRLH_CLKSRC_MASK|0x0100;
+#else
+	/* Key 1 */
+	WDOG_UNLOCK=WDOG_UNLOCK_WDOGUNLOCK(0xC520);
+	/* Key 2 */
+	WDOG_UNLOCK=WDOG_UNLOCK_WDOGUNLOCK(0xD928);
+	/* Setup window register high */
+	WDOG_WINH=WDOG_WINH_WINHIGH(0x00);
+	/* Setup window register low */
+	WDOG_WINL=WDOG_WINL_WINLOW(0x00);
+	/* Setup time-out value register high */
+	WDOG_TOVALH=WDOG_TOVALH_TOVALHIGH(0x0240);
+	/* Setup time-out value register low */
+	WDOG_TOVALL=WDOG_TOVALL_TOVALLOW(0x02);
+	/* Setup status register */
+	WDOG_PRESC=WDOG_PRESC_PRESCVAL(0x00);
+	/* Setup status register */
+	WDOG_STCTRLL=(WDOG_STCTRLL_INTFLG_MASK|0x01);
+	/* Setup control register */
+	WDOG_STCTRLH=WDOG_STCTRLH_DISTESTWDOG_MASK|WDOG_STCTRLH_BYTESEL(0x00)|WDOG_STCTRLH_WAITEN_MASK|WDOG_STCTRLH_STOPEN_MASK|WDOG_STCTRLH_ALLOWUPDATE_MASK|WDOG_STCTRLH_CLKSRC_MASK|WDOG_STCTRLH_WDOGEN_MASK|0x0100;
+#endif
+
+	// System clock initialization
+
+	// Set the system prescalers to safe value
+	SIM_CLKDIV1=SIM_CLKDIV1_OUTDIV1(0x00)|SIM_CLKDIV1_OUTDIV2(0x01)|SIM_CLKDIV1_OUTDIV3(0x03)|SIM_CLKDIV1_OUTDIV4(0x03);
+	// Enable clock gate for ports to enable pin routing
+	SIM_SCGC5|=SIM_SCGC5_PORTD_MASK|SIM_SCGC5_PORTC_MASK|SIM_SCGC5_PORTB_MASK|SIM_SCGC5_PORTA_MASK;
+
+	// Release IO pads after wakeup from VLLS mode.
+	if((PMC_REGSC&PMC_REGSC_ACKISO_MASK)!=0)
 		PMC_REGSC|=PMC_REGSC_ACKISO_MASK;
 
-	SMC_PMPROT=SMC_PMPROT_AVLP_MASK|SMC_PMPROT_ALLS_MASK|SMC_PMPROT_AVLLS_MASK;
+	// Update system prescalers
+	SIM_CLKDIV1=SIM_CLKDIV1_OUTDIV1(0x00)|SIM_CLKDIV1_OUTDIV2(0x01)|SIM_CLKDIV1_OUTDIV3(0x01)|SIM_CLKDIV1_OUTDIV4(0x02);
 
-	while(dest<&_edata)
-		*dest++=*src++;
+	// Select PLL as a clock source for various peripherals
+	SIM_SOPT2|=SIM_SOPT2_PLLFLLSEL_MASK;
 
-	dest=&_sbss;
+	// LPO 1kHz oscillator drives 32 kHz clock for various peripherals
+	SIM_SOPT1|=SIM_SOPT1_OSC32KSEL(0x03);
 
-	while(dest<&_ebss)
-		*dest++=0;
+	PORTA_PCR18&=~(PORT_PCR_ISF_MASK|PORT_PCR_MUX(0x07));
+	PORTA_PCR19&=~(PORT_PCR_ISF_MASK|PORT_PCR_MUX(0x07));
 
-	for(i=0;i<111;i++)
-		_VectorsRam[i]=_VectorsFlash[i];
+	MCG_SC=(MCG_SC&~(MCG_SC_FCRDIV(0x05)))|MCG_SC_FCRDIV(0x02);
 
-	for(i=0;i<95;i++)
-		(*((volatile uint8_t *)0xE000E400+i)=128);
+	// Switch to FEI Mode
+	MCG_C1=MCG_C1_CLKS(0x00)|MCG_C1_FRDIV(0x00)|MCG_C1_IREFS_MASK|MCG_C1_IRCLKEN_MASK;
+	MCG_C2=MCG_C2_RANGE0(0x02)|MCG_C2_EREFS0_MASK|MCG_C2_IRCS_MASK;
+	MCG_C4=(MCG_C4&~MCG_C4_DRST_DRS(0x01))|(MCG_C4_DMX32_MASK|MCG_C4_DRST_DRS(0x02));
 
-	SCB_VTOR=(uint32_t)_VectorsRam;
+	OSC_CR=OSC_CR_ERCLKEN_MASK;
 
-	OSC_CR=OSC_CR_SC8P_MASK|OSC_CR_SC2P_MASK|OSC_CR_ERCLKEN_MASK;
+	MCG_C7&=~MCG_C7_OSCSEL_MASK;
+	MCG_C5=MCG_C5_PRDIV0(0x07);
 
-	MCG_C2&=~(MCG_C2_RANGE0_MASK|MCG_C2_HGO0_MASK|MCG_C2_EREFS0_MASK);
-	MCG_C2|=(MCG_C2_RANGE0(2)|(1<<MCG_C2_EREFS0_SHIFT));
+	// Enable the PLL
+	MCG_C5|=MCG_C5_PLLCLKEN0_MASK;
+	MCG_C6=MCG_C6_VDIV0(0x00);
 
-	MCG_C1&=~(MCG_C1_CLKS_MASK|MCG_C1_FRDIV_MASK|MCG_C1_IREFS_MASK);
-	MCG_C1|=MCG_C1_CLKS(2)|MCG_C1_FRDIV(4);
+	while((MCG_S&MCG_S_IREFST_MASK)==0);
 
-	while((MCG_S&MCG_S_OSCINIT0_MASK)==0);
-	while(((MCG_S&MCG_S_CLKST_MASK)>>MCG_S_CLKST_SHIFT)!=0x2);
+	// Wait until output of the FLL is selected
+	while((MCG_S&0x0C)!=0);
+}
 
-	MCG_C6|=MCG_C6_CME0_MASK;
+void Cpu_SetBASEPRI(uint32_t Level)
+{
+	__asm__ volatile ("msr basepri, %[input]"::[input] "r" (Level):);
+}
 
-	MCG_C5&=~MCG_C5_PRDIV0_MASK;
-	MCG_C5|=MCG_C5_PRDIV0(5);
-//	MCG_C5|=MCG_C5_PRDIV0(7);
+void __low_level_init(void)
+{
+	/* Initialization of the RCM module */
+	RCM_RPFW&=~(RCM_RPFW_RSTFLTSEL(0x1F));
+	RCM_RPFC&=~(RCM_RPFC_RSTFLTSS_MASK|RCM_RPFC_RSTFLTSRW(0x03));
 
-	MCG_C6&=~MCG_C6_VDIV0_MASK;
-	MCG_C6|=MCG_C6_PLLS_MASK|MCG_C6_VDIV0(3);
-//	MCG_C6|=MCG_C6_PLLS_MASK|MCG_C6_VDIV0(12);
+	/* Initialization of the PMC module */
+	PMC_LVDSC1=(PMC_LVDSC1&~(PMC_LVDSC1_LVDIE_MASK|PMC_LVDSC1_LVDV(0x03)))|(PMC_LVDSC1_LVDACK_MASK|PMC_LVDSC1_LVDRE_MASK);
+	PMC_LVDSC2=(PMC_LVDSC2&~(PMC_LVDSC2_LVWIE_MASK|PMC_LVDSC2_LVWV(0x03)))|PMC_LVDSC2_LVWACK_MASK;
+	PMC_REGSC&=~(PMC_REGSC_BGEN_MASK|PMC_REGSC_ACKISO_MASK|PMC_REGSC_BGBE_MASK);
 
-	while(!(MCG_S&MCG_S_PLLST_MASK));
-	while(!(MCG_S&MCG_S_LOCK0_MASK));
+	SMC_PMPROT=0x00;
 
-	MCG_C1&=~MCG_C1_CLKS_MASK;
+	NVICIP73=NVIC_IP_PRI73(0x00);
+	NVICIP20=NVIC_IP_PRI20(0x00);
 
-	while(((MCG_S&MCG_S_CLKST_MASK)>>MCG_S_CLKST_SHIFT)!=0x3);
+	GPIOB_PDDR&=~GPIO_PDDR_PDD(0x03);
+	GPIOC_PDDR&=~GPIO_PDDR_PDD(0xC0);
 
-	SIM_CLKDIV1=SIM_CLKDIV1_OUTDIV1(0)|SIM_CLKDIV1_OUTDIV2(1)|SIM_CLKDIV1_OUTDIV4(2);
-	SIM_CLKDIV2=SIM_CLKDIV2_USBDIV(2)|SIM_CLKDIV2_USBFRAC_MASK;
-
-	MCG_C1=MCG_C1_CLKS(0)|MCG_C1_FRDIV(4);
-	while((MCG_S&MCG_S_CLKST_MASK)!=MCG_S_CLKST(3));
-
-	SIM_SOPT2=SIM_SOPT2_USBSRC_MASK|SIM_SOPT2_PLLFLLSEL_MASK|SIM_SOPT2_TRACECLKSEL_MASK|SIM_SOPT2_CLKOUTSEL(6);
-
+	// Set up SysTick
 	SYST_RVR=(72000000/1000)-1;
 	SYST_CSR=SysTick_CSR_CLKSOURCE_MASK|SysTick_CSR_TICKINT_MASK|SysTick_CSR_ENABLE_MASK;
 
-	__asm__ volatile("CPSIE i");
+	// Enable interrupts of the given priority level
+	Cpu_SetBASEPRI(0);
+
+	// Enable interrupts
+	__asm__ volatile ("CPSIE i");
+}
+
+void __thumb_startup(void)
+{
+	int addr=(int)__SP_INIT;
+
+	// setup hardware
+	__init_hardware();
+
+	// setup the stack before we attempt anything else
+	// skip stack setup if __SP_INIT is 0
+	// assume sp is already setup.
+	__asm(
+		"mov r0,%0\n\t"
+		"cmp r0,#0\n\t"
+		"beq skip_sp\n\t"
+		"mov sp,r0\n\t"
+		"sub sp,#4\n\t"
+		"mov r0,#0\n\t"
+		"mvn r0,r0\n\t"
+		"str r0,[sp,#0]\n\t"
+		"add sp,#4\n\t"
+		"skip_sp:\n\t"
+		::"r"(addr));
+
+	// zero-fill the .bss section
+	__zero_fill_bss();
+
+	// SUPPORT_ROM_TO_RAM
+	__copy_rom_sections_to_ram();
+
+	__low_level_init();
+
+	SysTick=0;
 
 	main();
 
+	// should never get here
 	while(1);
-}
-
-char *__brkval=(char *)&_ebss;
-
-void *_sbrk(int incr)
-{
-	char *prev=__brkval;
-
-	__brkval+=incr;
-
-	return prev;
-}
-
-__attribute__((weak)) int _read(int file, char *ptr, int len)
-{
-	return 0;
-}
-
-__attribute__((weak)) int _close(int fd)
-{
-	return -1;
-}
-
-#include <sys/stat.h>
-
-__attribute__((weak)) int _fstat(int fd, struct stat *st)
-{
-	st->st_mode=S_IFCHR;
-
-	return 0;
-}
-
-__attribute__((weak)) int _isatty(int fd)
-{
-	return 1;
-}
-
-__attribute__((weak)) int _lseek(int fd, long long offset, int whence)
-{
-	return -1;
-}
-
-__attribute__((weak)) void _exit(int status)
-{
-	while(1);
-}
-
-__attribute__((weak)) void __cxa_pure_virtual()
-{
-	while(1);
-}
-
-__attribute__((weak)) int __cxa_guard_acquire (char *g) 
-{
-	return !(*g);
-}
-
-__attribute__((weak)) void __cxa_guard_release(char *g)
-{
-	*g=1;
 }
