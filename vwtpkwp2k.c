@@ -128,7 +128,7 @@ int CAN_VWKWP_Init(void)
 			// Send ACK
 			_TxMsg.MessageID=_txID; // VW TP2.0 outgoing message
 			_TxMsg.Length=1;
-			_TxMsg.Data[0]=0xB0+(_RxMsg.Data[0]&0x0F)+1; // ACK
+			_TxMsg.Data[0]=0xB0+(_RxMsg.Data[0]+1&0x0F); // ACK
 
 			CAN_SendFrame(_TxMsg);
 
@@ -149,7 +149,7 @@ float _DecodeValue(uint8_t f, uint8_t a, uint8_t b)
 		case 0x01:		//RPM
 			return (float)(a*b)*0.2f;
 
-		case 0x05:		//°C
+		case 0x05:		//Â°C
 			return (float)(a*(b-100))*0.1f;
 
 		case 0x60:		//mbar
@@ -257,7 +257,7 @@ int CAN_VWKWP_GetValue(uint8_t LocalID, uint8_t Index, float *Value)
 					// Example: 300 1 0xB4
 					_TxMsg.MessageID=_txID; // VW TP2.0 outgoing message
 					_TxMsg.Length=1;
-					_TxMsg.Data[0]=0xB0+(_RxMsg.Data[0]&0x0F)+1; // ACK
+					_TxMsg.Data[0]=0xB0+(_RxMsg.Data[0]+1&0x0F); // ACK
 
 					CAN_SendFrame(_TxMsg);
 
